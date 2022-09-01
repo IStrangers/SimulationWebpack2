@@ -1,4 +1,5 @@
 const { SyncHook } = require("tapable")
+const neoAsync = require("neo-async")
 const path = require("path")
 
 class Compilation {
@@ -8,6 +9,7 @@ class Compilation {
     this.params = params
     this.entries = []
     this.modules = []
+    this.moduleMap = {}
     this.hooks = {
       succeedModule: new SyncHook(["module"])
     }
@@ -20,19 +22,32 @@ class Compilation {
   }
 
   addModuleChain(context,entry,name,callback) {
-    const { normalModuleFactory } = this.params
-    const entryModule = normalModuleFactory.create({
+    this.createModule({
       name,
-      context: this.compiler.context,
+      context,
       rawRequest: entry,
-      resource: path.posix.join(context,entry),
       parser: this.compiler.parser,
-    })
-    this.entries.push(entryModule)
-    this.modules.push(entryModule)
+      resource: path.posix.join(context,entry),
+    },entryModule => {
+      this.entries.push(entryModule)
+    },callback)
+  }
 
-    function afterBuild(err) {
-      return callback(err,entryModule)
+  createModule(data,addEntry,callback) {
+    const { normalModuleFactory } = this.params
+    const entryModule = normalModuleFactory.create(data)
+    this.moduleMap[entryModule.moduleId] = entryModule
+    addEntry && addEntry(entryModule)
+    this.modules.push(entryModule)
+    
+    const afterBuild = (err,module) => {
+      if(module.dependencies.length > 0) {
+        this.processModuleDependencies(module,err => {
+          callback(err,module)
+        })
+      } else {
+        callback(err,module)
+      }
     }
 
     this.buildModule(entryModule,afterBuild)
@@ -41,8 +56,23 @@ class Compilation {
   buildModule(module,afterBuild) {
     module.build(this,err => {
       this.hooks.succeedModule.call(module)
-      afterBuild(err)
+      afterBuild(err,module)
     })
+  }
+
+  processModuleDependencies(module,callback) {
+    const dependencies = module.dependencies
+    neoAsync.forEach(dependencies,(dependency,done) => {
+      const { name,context,rawRequest,resource,moduleId } = dependency
+      this.createModule({
+        name,
+        context,
+        rawRequest,
+        parser: this.compiler.parser,
+        resource,
+        moduleId
+      },null,callback)
+    },callback)
   }
 
 }
