@@ -5,5 +5,7 @@ webpack({
 
   }
 },function(compiler) {
-  console.log(compiler)
+  //console.log(compiler)
+}).run(function(err,stats) {
+  console.log(err,stats)
 })
