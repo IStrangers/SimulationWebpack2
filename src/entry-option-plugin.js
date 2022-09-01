@@ -1,4 +1,4 @@
-const SingleEntryPlugin = require("./single-entry-plugin.js")
+const SingleEntryPlugin = require("./single-entry-plugin")
 
 function itemToPlugin(context,entry,name) {
   return new SingleEntryPlugin(context,entry,name)

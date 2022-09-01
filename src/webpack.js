@@ -1,6 +1,6 @@
-const Compiler = require("./compiler.js")
-const NodeEnvironmentPlugin = require("./node/node-environment-plugin.js")
-const WebpackOptionsApply = require("./webpack-options-apply.js")
+const Compiler = require("./compiler")
+const NodeEnvironmentPlugin = require("./node/node-environment-plugin")
+const WebpackOptionsApply = require("./webpack-options-apply")
 
 function webpack(options,callback) {
   const { plugins } = options
