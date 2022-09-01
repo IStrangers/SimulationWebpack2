@@ -1,6 +1,8 @@
 const { SyncHook,SyncBailHook,AsyncSeriesHook,AsyncParallelHook } = require("tapable")
 const Compilation = require("./compilation")
 const NormalModuleFactory = require("./normal-module-factory")
+const Parser = require("./parser")
+const Stats = require("./stats")
 
 class Compiler {
 
@@ -19,6 +21,7 @@ class Compiler {
       afterCompile: new AsyncSeriesHook(["compilation"]),
       done: new AsyncSeriesHook(["stats"]),
     }
+    this.parser = new Parser()
     this.running = false
   }
 
@@ -29,12 +32,7 @@ class Compiler {
     }
 
     function onCompiled(err,compilation) {
-      finalCallback(err,{
-        entries: true,
-        chunks: true,
-        module: true,
-        assets: true,
-      })
+      finalCallback(err,new Stats(compilation))
     }
 
     this.running = true
@@ -55,7 +53,7 @@ class Compiler {
       compile.call(params)
       const compilation = this.newCompilation(params)
       make.callAsync(compilation,err => {
-        callback && callback()
+        callback && callback(err,compilation)
       })
     })
   }
@@ -68,15 +66,15 @@ class Compiler {
   }
 
   newCompilation(params) {
-    const newCompilation = this.createCompilation()
+    const newCompilation = this.createCompilation(params)
     const { thisCompilation,compilation } = this.hooks
     thisCompilation.call(newCompilation,params)
     compilation.call(newCompilation,params)
     return newCompilation
   }
 
-  createCompilation() {
-    return new Compilation(this)
+  createCompilation(params) {
+    return new Compilation(this,params)
   }
 
 }
