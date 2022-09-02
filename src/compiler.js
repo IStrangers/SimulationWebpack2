@@ -3,6 +3,8 @@ const Compilation = require("./compilation")
 const NormalModuleFactory = require("./normal-module-factory")
 const Parser = require("./parser")
 const Stats = require("./stats")
+const path = require("path")
+const mkdirp = require("mkdirp")
 
 class Compiler {
 
@@ -19,6 +21,7 @@ class Compiler {
       thisCompilation: new SyncHook(["compilation","params"]),
       compilation: new SyncHook(["compilation","params"]),
       afterCompile: new AsyncSeriesHook(["compilation"]),
+      emit: new AsyncSeriesHook(["compilation"]),
       done: new AsyncSeriesHook(["stats"]),
     }
     this.parser = new Parser()
@@ -26,18 +29,20 @@ class Compiler {
   }
 
   run(callback) {
+    const { beforeRun,run,done } = this.hooks
 
-    function finalCallback(err,stats) {
-      callback && callback(err,stats)
-    }
-
-    function onCompiled(err,compilation) {
-      finalCallback(err,new Stats(compilation))
+    const onCompiled = (err,compilation) => {
+      this.emitAssets(compilation,err => {
+        const stats = new Stats(compilation)
+        done.callAsync(stats,err => {
+          callback && callback(err,stats)
+        })
+      })
     }
 
     this.running = true
 
-    const { beforeRun,run } = this.hooks
+    
     beforeRun.callAsync(this,err => {
       run.callAsync(this,err => {
         this.compile(onCompiled)
@@ -48,12 +53,16 @@ class Compiler {
 
   compile(callback) {
     const params = this.newCompilationParams()
-    const { beforeCompile,compile,make } = this.hooks
+    const { beforeCompile,compile,make,afterCompile } = this.hooks
     beforeCompile.callAsync(params, err => {
       compile.call(params)
       const compilation = this.newCompilation(params)
       make.callAsync(compilation,err => {
-        callback && callback(err,compilation)
+        compilation.seal(err => {
+          afterCompile.callAsync(compilation,err => {
+            callback && callback(err,compilation)
+          })
+        })
       })
     })
   }
@@ -75,6 +84,22 @@ class Compiler {
 
   createCompilation(params) {
     return new Compilation(this,params)
+  }
+
+  emitAssets(compilation,callback) {
+    const { emit } = this.hooks
+    const outputPath = this.options.output.path
+    emit.callAsync(compilation,() => {
+      mkdirp(outputPath).then(() => {
+        const assets = compilation.assets
+        for(let file in assets) {
+          const source = assets[file]
+          const targetPath = path.posix.join(outputPath,file)
+          this.outputFileSystem.writeFileSync(targetPath,source,"utf8")
+        }
+        callback && callback()
+      })
+    })
   }
 
 }
