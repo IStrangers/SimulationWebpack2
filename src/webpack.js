@@ -2,7 +2,7 @@ const Compiler = require("./compiler")
 const NodeEnvironmentPlugin = require("./node/node-environment-plugin")
 const WebpackOptionsApply = require("./webpack-options-apply")
 
-function webpack(options,callback) {
+function webpack(options) {
   const { plugins } = options
   const compiler = new Compiler(options)
   const nodeEnvironmentPlugin = new NodeEnvironmentPlugin()
@@ -14,7 +14,6 @@ function webpack(options,callback) {
   }
   const webpackOptionsApply = new WebpackOptionsApply()
   webpackOptionsApply.process(compiler)
-  callback && callback(compiler)
   return compiler
 }
 

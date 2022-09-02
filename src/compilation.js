@@ -4,8 +4,10 @@ const path = require("path")
 const Chunk = require("./chunk")
 const ejs = require("ejs")
 const fs = require("fs")
-const mainTemplate = fs.readFileSync(path.join(__dirname,"templates","main.ejs"),"utf8")
+const mainTemplate = fs.readFileSync(path.join(__dirname,"templates","async-main.ejs"),"utf8")
 let mainRender = ejs.compile(mainTemplate)
+const chunkTemplate = fs.readFileSync(path.join(__dirname,"templates","chunk.ejs"),"utf8")
+let chunkRender = ejs.compile(chunkTemplate)
 
 class Compilation {
 
@@ -27,18 +29,19 @@ class Compilation {
   }
 
   addEntry(context,entry,name,callback) {
-    this.addModuleChain(context,entry,name,(err,module) => {
+    this.addModuleChain(context,entry,name,false,(err,module) => {
       callback(err,module)
     })
   }
 
-  addModuleChain(context,entry,name,callback) {
+  addModuleChain(context,entry,name,async,callback) {
     this.createModule({
       name,
       context,
       rawRequest: entry,
       parser: this.compiler.parser,
       resource: path.posix.join(context,entry),
+      async
     },entryModule => {
       this.entries.push(entryModule)
     },callback)
@@ -103,13 +106,14 @@ class Compilation {
   createChunkAssets() {
     for(let i = 0; i < this.chunks.length; i++) {
       const chunk = this.chunks[i]
-      const entryModule = chunk.entryModule
-      const file = entryModule.name + ".js"
+      const { name,moduleId,async } = chunk.entryModule
+      const file = name + ".js"
       chunk.files.push(file)
-      const source = mainRender({
-        entryId: entryModule.moduleId,
+      const data = {
+        entryId: async ? name : moduleId,
         modules: chunk.modules
-      })
+      }
+      const source = async ? chunkRender(data) : mainRender(data)
       this.emitAssets(file,source)
     }
   }

@@ -6,5 +6,5 @@ const webpackOptions = require(webpackConfigPath)
 
 webpack(webpackOptions,function(compiler) {
 }).run(function(err,stats) {
-  console.log(stats.toJson())
+  //console.log(stats.toJson())
 })
