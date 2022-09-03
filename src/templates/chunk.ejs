@@ -1,11 +1,11 @@
-(window["webpackJsonp"] = window["webpackJsonp"] || []).push(
-  [["<%-entryId%>"]],
-  {
-    <%for(let module of modules){%>
+(window["webpackJsonp"] = window["webpackJsonp"] || []).push([["<%-entryId%>"], {
+  <%
+  for(let module of modules)
+  {%>
       "<%-module.moduleId%>":
       (function (module, exports, __webpack_require__) {
         <%-module.source%>
       }),
-    <%}%>
-  }
-)
+  <%}
+%> 
+}]);
