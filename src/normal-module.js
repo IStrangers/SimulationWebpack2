@@ -64,7 +64,6 @@ class NormalModule {
       depModuleId
     } = this.getModuleParams(node)
     if(!moduleName.startsWith(".")) {
-      console.log(path.posix.join(this.context,"node_modules",moduleName))
       depResource = require.resolve(path.posix.join(this.context,"node_modules",moduleName))
       depResource = depResource.replace(/\\/g,"/")
       depModuleId = `.${depResource.slice(this.context.length)}`
