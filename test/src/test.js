@@ -1,5 +1,5 @@
-
+const value = "Test"
 
 module.exports = {
-  value: "Test"
+  value
 }
