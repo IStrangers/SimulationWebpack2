@@ -3,6 +3,7 @@ const babelTypes = require("babel-types")
 const babelGenerate = require("babel-generator").default;
 const babelTraverse = require("babel-traverse").default;
 const neoAsync = require("neo-async").default;
+const { runLoaders } = require("./loader-runner")
 
 class NormalModule {
 
@@ -109,8 +110,30 @@ class NormalModule {
   }
 
   getSource(compilation,callback) {
-    const fs = compilation.compiler.inputFileSystem;
-    fs.readFile(this.resource,"utf8",callback)
+    const { module } = compilation.compiler.options
+    const { rules } = module
+    let loaders = []
+    for(let i = 0; i < rules.length; i++) {
+      const rule = rules[i]
+      if(rule.test.test(this.resource)) {
+        loaders.push(...rule.use) 
+      }
+    }
+    loaders = loaders.map((loader) => {
+      const loaderPath = path.posix.join(this.context,"loaders",loader)
+      return require.resolve(loaderPath)
+    })
+    if(loaders.length > 0) {
+      runLoaders({
+        resource: this.resource,
+        loaders
+      },(err,{ result }) => {
+        callback(err,result.toString())
+      })
+    } else {
+      const fs = compilation.compiler.inputFileSystem;
+      fs.readFile(this.resource,"utf8",callback)
+    }
   }
 
 }
